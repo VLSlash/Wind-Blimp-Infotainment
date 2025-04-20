@@ -1,0 +1,458 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.io.*;
+import java.net.*;
+import javax.sound.sampled.*;
+import java.io.File;
+import java.io.IOException;
+import javafx.application.Platform;
+import javafx.embed.swing.JFXPanel;
+import javafx.scene.Scene;
+import javafx.scene.web.WebEngine;
+import javafx.scene.web.WebView;
+import org.json.JSONObject;
+
+
+public class CarInfotainmentSystem extends JFrame {
+	private JPanel appPanel;
+	private java.util.List<JButton> appButtons = new java.util.ArrayList<>();
+	private JButton draggedButton = null;
+	
+	public CarInfotainmentSystem() {
+	    setTitle("Car Infotainment System");
+	    setSize(400, 400);
+	    setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+	    setLayout(new BorderLayout());
+
+	    // Create the panel with a 2x3 GridLayout
+	    appPanel = new JPanel(new GridLayout(2, 3));
+
+	    // Create the buttons in the specified order
+	    JButton outputButton = new JButton("Current Outputs");
+	    JButton mapsButton = new JButton("Maps");
+	    JButton weatherButton = new JButton("Weather");
+	    JButton musicButton = new JButton("Music");
+	    JButton phoneButton = new JButton("Phone");
+	    JButton settingsButton = new JButton("Settings");
+
+	    // Add buttons to the panel in the desired order
+	    appPanel.add(outputButton);
+	    appPanel.add(mapsButton);
+	    appPanel.add(weatherButton);
+	    appPanel.add(musicButton);
+	    appPanel.add(phoneButton);
+	    appPanel.add(settingsButton);
+
+	    // Enable drag functionality for each button
+	    for (JButton btn : new JButton[]{outputButton, mapsButton, weatherButton, musicButton, phoneButton, settingsButton}) {
+	        setupButtonForDrag(btn);
+	    }
+
+	    // Set button actions
+	    musicButton.addActionListener(e -> showMusicPlayer());
+	    mapsButton.addActionListener(e -> showLeafletMap());
+	    settingsButton.addActionListener(e -> showSettingsApp());
+	    phoneButton.addActionListener(e -> showPhoneApp());
+	    outputButton.addActionListener(e -> showCurrentOutputsApp());
+	    weatherButton.addActionListener(e -> showWeatherApp("San Antonio"));
+
+	    // Add the appPanel to the frame
+	    add(appPanel, BorderLayout.CENTER);
+	}
+	private void showMusicPlayer() {
+	    // Create a new JFrame to show the music list
+	    JFrame musicWindow = new JFrame("Music Player");
+	    musicWindow.setSize(400, 300);
+	    musicWindow.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+	    // Use JFileChooser to allow the user to select a directory
+	    JFileChooser fileChooser = new JFileChooser();
+	    fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY); // Only directories
+	    int returnValue = fileChooser.showOpenDialog(musicWindow);
+
+	    if (returnValue == JFileChooser.APPROVE_OPTION) {
+	        File selectedDirectory = fileChooser.getSelectedFile();
+
+	        // Get all .wav files in the directory
+	        File[] musicFiles = selectedDirectory.listFiles((dir, name) -> name.toLowerCase().endsWith(".wav"));
+
+	        if (musicFiles != null && musicFiles.length > 0) {
+	            // Create a JList to display the music files
+	            DefaultListModel<String> listModel = new DefaultListModel<>();
+	            for (File musicFile : musicFiles) {
+	                listModel.addElement(musicFile.getName()); // Add file names to the list
+	            }
+
+	            JList<String> musicList = new JList<>(listModel);
+	            JScrollPane listScroller = new JScrollPane(musicList);
+	            musicWindow.add(listScroller, BorderLayout.CENTER);
+
+	            // Play selected music when a list item is clicked
+	            musicList.addListSelectionListener(e1 -> {
+	                if (!e1.getValueIsAdjusting()) { // Ensure only one selection is made
+	                    String selectedMusicName = musicList.getSelectedValue();
+	                    for (File musicFile : musicFiles) {
+	                        if (musicFile.getName().equals(selectedMusicName)) {
+	                            playMusic(musicFile.getAbsolutePath()); // Play the selected music
+	                            break;
+	                        }
+	                    }
+	                }
+	            });
+
+	            musicWindow.setVisible(true);
+	        } else {
+	            JOptionPane.showMessageDialog(musicWindow, "No music files found in the selected directory.");
+	        }
+	    }
+	}
+
+	private void playMusic(String filePath) {
+	    new Thread(() -> {
+	        try {
+	            // Open the audio file
+	            File musicFile = new File(filePath);
+	            AudioInputStream audioStream = AudioSystem.getAudioInputStream(musicFile);
+	            Clip clip = AudioSystem.getClip();
+	            clip.open(audioStream);
+	            clip.start();
+	            clip.loop(Clip.LOOP_CONTINUOUSLY);  // Loop the music if needed
+	        } catch (UnsupportedAudioFileException | IOException | LineUnavailableException e) {
+	            e.printStackTrace();
+	        }
+	    }).start();
+	}
+
+	
+	private void showPhoneApp() {
+	    // Create a new JFrame for the phone app
+	    JFrame phoneAppWindow = new JFrame("Phone App");
+	    phoneAppWindow.setSize(400, 300);
+	    phoneAppWindow.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+	    // Create a list of departments and emergency services with their corresponding phone numbers
+	    String[] phoneContacts = {
+	        "HR Department: 555-1234",
+	        "IT Department: 555-5678",
+	        "Customer Support: 555-8765",
+	        "Sales: 555-4321",
+	        "Emergency Services (Police): 911",
+	        "Emergency Services (Fire): 911",
+	        "Emergency Services (Ambulance): 911"
+	    };
+
+	    // Create a JList to display phone contacts
+	    JList<String> phoneList = new JList<>(phoneContacts);
+	    phoneList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+
+	    // Create a JScrollPane to make the list scrollable
+	    JScrollPane listScroller = new JScrollPane(phoneList);
+	    phoneAppWindow.add(listScroller, BorderLayout.CENTER);
+
+	    // Create a button to simulate making a call
+	    JButton callButton = new JButton("Call");
+	    callButton.addActionListener(e -> {
+	        // Get the selected contact from the list
+	        String selectedContact = phoneList.getSelectedValue();
+	        if (selectedContact != null) {
+	            // Simulate making a call by displaying a message
+	            JOptionPane.showMessageDialog(phoneAppWindow, "Dialing " + selectedContact + "...");
+	        } else {
+	            // Show a message if no contact is selected
+	            JOptionPane.showMessageDialog(phoneAppWindow, "Please select a contact to call.");
+	        }
+	    });
+
+	    // Add the call button below the list
+	    phoneAppWindow.add(callButton, BorderLayout.SOUTH);
+
+	    // Display the phone app window
+	    phoneAppWindow.setVisible(true);
+	}
+
+
+	private void setupButtonForDrag(JButton button) {
+	    button.addMouseListener(new MouseAdapter() {
+	        @Override
+	        public void mousePressed(MouseEvent e) {
+	            draggedButton = button;
+	        }
+
+	        @Override
+	        public void mouseReleased(MouseEvent e) {
+	            Component droppedOver = appPanel.getComponentAt(e.getPoint());
+	            if (droppedOver instanceof JButton && draggedButton != null && droppedOver != draggedButton) {
+	                int fromIndex = appButtons.indexOf(draggedButton);
+	                int toIndex = appButtons.indexOf(droppedOver);
+
+	                if (fromIndex >= 0 && toIndex >= 0) {
+	                    appButtons.remove(fromIndex);
+	                    appButtons.add(toIndex, draggedButton);
+	                    updateAppLayout(appPanel.getLayout());
+	                }
+	            }
+	            draggedButton = null;
+	        }
+	    });
+
+	    // Optional: visual feedback (drag ghosting, etc.)
+	    button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+	}
+
+
+
+	private void updateAppLayout(LayoutManager layout) {
+	    appPanel.removeAll();
+	    appPanel.setLayout(layout);
+	    for (JButton btn : appButtons) {
+	        appPanel.add(btn);
+	    }
+	    appPanel.revalidate();
+	    appPanel.repaint();
+	}
+
+
+
+    private void showSettingsApp() {
+        JFrame settingsWindow = new JFrame("Settings");
+        settingsWindow.setSize(300, 250);
+        settingsWindow.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        JButton verticalBtn = new JButton("Vertical Layout");
+        JButton horizontalBtn = new JButton("Horizontal Layout");
+        JButton gridBtn = new JButton("Grid Layout (2x3)");
+        JButton sortBtn = new JButton("Sort Apps Alphabetically");
+        JButton resetBtn = new JButton("Reset to Default Order");
+
+        verticalBtn.addActionListener(e -> updateAppLayout(new GridLayout(6, 1)));
+        horizontalBtn.addActionListener(e -> updateAppLayout(new GridLayout(1, 6)));
+        gridBtn.addActionListener(e -> updateAppLayout(new GridLayout(2, 3)));
+        sortBtn.addActionListener(e -> {
+            appButtons.sort((a, b) -> a.getText().compareToIgnoreCase(b.getText()));
+            updateAppLayout(appPanel.getLayout());
+        });
+        resetBtn.addActionListener(e -> {
+            appButtons.clear();
+            // Reset to original order
+            JButton music = new JButton("Music");
+            JButton maps = new JButton("Maps");
+            JButton settings = new JButton("Settings");
+            JButton phone = new JButton("Phone");
+            JButton output = new JButton("Current Outputs");
+            JButton weather = new JButton("Weather");
+
+            music.addActionListener(ev -> showAppInfo("Music App"));
+            maps.addActionListener(ev -> showLeafletMap());
+            settings.addActionListener(ev -> showSettingsApp());
+            phone.addActionListener(ev -> showAppInfo("Phone App"));
+            output.addActionListener(ev -> showCurrentOutputsApp());
+            weather.addActionListener(ev -> showWeatherApp("San Antonio"));
+
+            appButtons.add(maps);
+            appButtons.add(weather);
+            appButtons.add(output);
+            appButtons.add(settings);
+            appButtons.add(music);
+            appButtons.add(phone);
+
+            updateAppLayout(new GridLayout(2, 3));
+        });
+
+        panel.add(verticalBtn);
+        panel.add(horizontalBtn);
+        panel.add(gridBtn);
+        panel.add(Box.createRigidArea(new Dimension(0, 10)));
+        panel.add(sortBtn);
+        panel.add(resetBtn);
+
+        settingsWindow.add(panel);
+        settingsWindow.setVisible(true);
+    }
+
+    private void showCurrentOutputsApp() {
+        JFrame outputWindow = new JFrame("Current Outputs");
+        outputWindow.setSize(400, 300);
+        outputWindow.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        // Simulated data
+        double windRateKW = 0;
+        int batteryLevel = 0;
+        String[] turbineStatuses = {"Normal", "Maintenance Required", "Offline"};
+        String turbineStatus = turbineStatuses[2];
+        JLabel windRateLabel = new JLabel("Wind Energy Rate: " + String.format("%.2f", windRateKW) + " kW");
+        JLabel batteryLabel = new JLabel("Battery Cell Filled: " + batteryLevel + "%");
+        JLabel turbineLabel = new JLabel("Turbine Condition: " + turbineStatus);
+
+    
+        double airspeedKnots = 0; 
+        double altitudeFt = 0; 
+
+        JLabel airspeedLabel = new JLabel("Airspeed: " + String.format("%.1f", airspeedKnots) + " knots");
+        JLabel altitudeLabel = new JLabel("Altitude: " + String.format("%.0f", altitudeFt) + " ft");
+
+        panel.add(windRateLabel);
+        panel.add(batteryLabel);
+        panel.add(turbineLabel);
+        panel.add(Box.createRigidArea(new Dimension(0, 10))); // spacer
+        panel.add(airspeedLabel);
+        panel.add(altitudeLabel);
+
+        outputWindow.add(panel);
+        outputWindow.setVisible(true);
+    }
+
+
+    // Method to show simple app info
+    private void showAppInfo(String appName) {
+        JFrame appWindow = new JFrame(appName);
+        appWindow.setSize(300, 300);
+        appWindow.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        appWindow.add(new JLabel(appName + " is running", SwingConstants.CENTER));
+        appWindow.setVisible(true);
+    }
+    private String fetchWeatherData(String city) {
+        try {
+            String encodedCity = URLEncoder.encode(city, "UTF-8");
+            String urlString = "https://api.openweathermap.org/data/2.5/weather?q=" + encodedCity + "&appid=" + "9542c55e1c26804ca28049d61d6e7d7f";
+            URL url = new URL(urlString);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+
+            if (connection.getResponseCode() != 200)
+                return "Error: HTTP response code " + connection.getResponseCode();
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+            StringBuilder json = new StringBuilder();
+            String line;
+
+            while ((line = reader.readLine()) != null) {
+                json.append(line);
+            }
+            reader.close();
+            return json.toString();
+        } catch (IOException e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    // Method to show weather details
+    private void showWeatherApp(String city) {
+        String weatherData = fetchWeatherData(city);
+
+        if (weatherData != null && !weatherData.startsWith("Error")) {
+            JSONObject weatherJson = new JSONObject(weatherData);
+            String description = weatherJson.getJSONArray("weather").getJSONObject(0).getString("description");
+            double temperatureKelvin = weatherJson.getJSONObject("main").getDouble("temp");
+            double temperatureCelsius = temperatureKelvin - 273.15;
+            double temperatureFahrenheit = (temperatureCelsius * 9 / 5) + 32;
+
+            JFrame weatherWindow = new JFrame("Weather App");
+            weatherWindow.setSize(300, 200);
+            weatherWindow.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+            JPanel panel = new JPanel();
+            panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+
+            panel.add(new JLabel("Temperature: " + String.format("%.2f", temperatureFahrenheit) + "°F"));
+            panel.add(new JLabel("Condition: " + description));
+
+            weatherWindow.add(panel);
+            weatherWindow.setVisible(true);
+        } else {
+            JOptionPane.showMessageDialog(this, "Failed to retrieve weather data.\n" + weatherData);
+        }
+    }
+
+
+    // Method to show Leaflet map
+    private void showLeafletMap() {
+        new JFXPanel(); // initialize JavaFX environment
+
+        Platform.runLater(() -> {
+            WebView webView = new WebView();
+            WebEngine webEngine = webView.getEngine();
+
+            try {
+                // Write HTML to a temp file for Leaflet map
+                File tempHtml = File.createTempFile("leaflet_map", ".html");
+                tempHtml.deleteOnExit();
+
+                String html = """
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8" />
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Leaflet Map</title>
+                    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+                    <style>
+                        #map {
+                            height: 100%;
+                            width: 100%;
+                        }
+                        html, body {
+                            height: 100%;
+                            margin: 0;
+                            padding: 0;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div id="map"></div>
+
+                    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+                    <script>
+                        var map = L.map('map').setView([29.4241, -98.4936], 13); // San Antonio coordinates
+
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        }).addTo(map);
+
+                        // Add satellite imagery layer
+                        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                            attribution: 'Esri, Maxar, Earthstar Geographics, and the GIS community'
+                        }).addTo(map);
+                    </script>
+                </body>
+                </html>
+                """;
+
+                // Save the HTML to the temp file
+                try (FileWriter writer = new FileWriter(tempHtml)) {
+                    writer.write(html);
+                }
+
+                // Load the map from the temp file URL
+                webEngine.load(tempHtml.toURI().toString());
+
+                // Display the map in a JFrame using JavaFX
+                JFrame fxFrame = new JFrame("Leaflet Map");
+                fxFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+                fxFrame.setSize(800, 600);
+
+                JFXPanel fxPanel = new JFXPanel();
+                fxPanel.setScene(new Scene(webView));
+
+                fxFrame.add(fxPanel);
+                fxFrame.setVisible(true);
+
+            } catch (IOException e) {
+                JOptionPane.showMessageDialog(this, "Failed to load map: " + e.getMessage());
+            }
+        });
+    }
+
+    // Main method to run the infotainment system
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new CarInfotainmentSystem().setVisible(true));
+    }
+}
